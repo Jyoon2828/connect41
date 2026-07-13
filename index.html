@@ -1,0 +1,672 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>경북 특산물 시장 교류 게임</title>
+    <!-- Tailwind CSS (CDN) -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <!-- React & ReactDOM (CDN) -->
+    <script crossorigin src="https://unpkg.com/react@18/umd/react.production.min.js"></script>
+    <script crossorigin src="https://unpkg.com/react-dom@18/umd/react-dom.production.min.js"></script>
+    <!-- Babel for in-browser JSX parsing (CDN) -->
+    <script src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
+    <style>
+        body { font-family: 'Pretendard', -apple-system, BlinkMacSystemFont, system-ui, Roboto, 'Helvetica Neue', 'Segoe UI', 'Apple SD Gothic Neo', 'Noto Sans KR', 'Malgun Gothic', 'Apple Color Emoji', 'Segoe UI Emoji', 'Segoe UI Symbol', sans-serif; }
+        /* 스크롤바 디자인 */
+        ::-webkit-scrollbar { width: 8px; height: 8px; }
+        ::-webkit-scrollbar-track { background: #f1f1f1; border-radius: 4px; }
+        ::-webkit-scrollbar-thumb { background: #cbd5e1; border-radius: 4px; }
+        ::-webkit-scrollbar-thumb:hover { background: #94a3b8; }
+    </style>
+</head>
+<body class="bg-gray-100">
+    <div id="root"></div>
+
+    <script type="text/babel">
+        // React Hooks 추출
+        const { useState, useEffect } = React;
+
+        // --- [데이터 정의: 물건 분류를 과일, 채소, 동물(수산물, 고기 포함)로 분류] ---
+        const REGIONS_DATA = [
+            {
+                zone: '북부권',
+                cities: [
+                    { id: 'andong', name: '안동시', items: [{ id: 'a1', name: '사과', type: '과일', price: 2500, emoji: '🍎', qty: 99 }, { id: 'a2', name: '간고등어', type: '동물', price: 4000, emoji: '🐟', qty: 99 }] },
+                    { id: 'yeongju', name: '영주시', items: [{ id: 'y1', name: '한우', type: '동물', price: 8000, emoji: '🥩', qty: 99 }, { id: 'y2', name: '인삼', type: '채소', price: 5000, emoji: '🥔', qty: 99 }] },
+                    { id: 'uiseong', name: '의성군', items: [{ id: 'u1', name: '마늘', type: '채소', price: 2000, emoji: '🧄', qty: 99 }] },
+                    { id: 'bonghwa', name: '봉화군', items: [{ id: 'b1', name: '송이버섯', type: '채소', price: 6500, emoji: '🍄', qty: 99 }] },
+                    { id: 'sangju', name: '상주시', items: [{ id: 'sj1', name: '곶감', type: '과일', price: 3500, emoji: '🍅', qty: 99 }] },
+                    { id: 'mungyeong', name: '문경시', items: [{ id: 'm1', name: '오미자', type: '과일', price: 4000, emoji: '🍒', qty: 99 }] },
+                    { id: 'yeongyang', name: '영양군', items: [{ id: 'yy1', name: '고추', type: '채소', price: 1500, emoji: '🌶️', qty: 99 }] }
+                ]
+            },
+            {
+                zone: '남부권',
+                cities: [
+                    { id: 'seongju', name: '성주군', items: [{ id: 's1', name: '참외', type: '과일', price: 3000, emoji: '🍈', qty: 99 }] },
+                    { id: 'cheongdo', name: '청도군', items: [{ id: 'c1', name: '반건시', type: '과일', price: 3000, emoji: '🍅', qty: 99 }] },
+                    { id: 'gyeongsan', name: '경산시', items: [{ id: 'g1', name: '대추', type: '과일', price: 2000, emoji: '🌰', qty: 99 }] },
+                    { id: 'yeongcheon', name: '영천시', items: [{ id: 'yc1', name: '포도', type: '과일', price: 3500, emoji: '🍇', qty: 99 }] },
+                    { id: 'goryeong', name: '고령군', items: [{ id: 'gr1', name: '수박', type: '과일', price: 5000, emoji: '🍉', qty: 99 }] },
+                    { id: 'gimcheon', name: '김천시', items: [{ id: 'gc1', name: '자두', type: '과일', price: 2500, emoji: '🍑', qty: 99 }] }
+                ]
+            },
+            {
+                zone: '동해안권',
+                cities: [
+                    { id: 'pohang', name: '포항시', items: [{ id: 'p1', name: '과메기', type: '동물', price: 4500, emoji: '🐟', qty: 99 }, { id: 'p2', name: '시금치', type: '채소', price: 1500, emoji: '🥬', qty: 99 }] },
+                    { id: 'yeongdeok', name: '영덕군', items: [{ id: 'd1', name: '대게', type: '동물', price: 9500, emoji: '🦀', qty: 99 }] },
+                    { id: 'uljin', name: '울진군', items: [{ id: 'ul1', name: '돌문어', type: '동물', price: 6000, emoji: '🐙', qty: 99 }] },
+                    { id: 'ulleung', name: '울릉군', items: [{ id: 'ull1', name: '오징어', type: '동물', price: 4000, emoji: '🦑', qty: 99 }, { id: 'ull2', name: '호박', type: '채소', price: 2500, emoji: '🎃', qty: 99 }] }
+                ]
+            }
+        ];
+
+        // 과일, 채소, 동물(수산물, 고기) 분류에 따른 미션 개편
+        const MISSIONS = {
+            1: { 과일: 2, 채소: 1 },
+            2: { 동물: 3 },
+            3: { 과일: 1, 채소: 2, 동물: 2 }
+        };
+
+        const ROUND_STORIES = {
+            1: {
+                title: "1라운드: 할머니의 첫 심부름! 👵",
+                desc: "할머니가 저녁 식사 재료를 부탁하셨어요. 우리 동네에 없는 물건은 다른 동네에서 사야 해요. 다른 동네에서 사면 배달해 주는 배송비(400원)가 든답니다!",
+                rule: "다른 지역 특산물 배송비: 400원"
+            },
+            2: {
+                title: "2라운드: 도로가 뚫렸어요! 🛣️",
+                desc: "경상북도 지역 간에 도로가 뚫려서 이웃 지역과 교류하기 쉬워졌어요! 나와 같은 '권역'에 있는 이웃 도시에서 물건을 사면 배송비가 절반(200원)으로 할인됩니다!",
+                rule: "같은 권역 배송비: 200원 / 다른 권역: 400원"
+            },
+            3: {
+                title: "3라운드: 앗! 이상 고온 현상 ☀️",
+                desc: "너무 더운 날씨 때문에 과일과 채소가 잘 자라지 못했어요! 수량이 적어져서 가격이 비싸졌고, 심지어 다 팔린(품절) 물건도 생겼어요. 예산을 잘 계산해서 사야 해요!",
+                rule: "과일/채소 30% 품절 및 가격 폭등!"
+            }
+        };
+
+        function App() {
+            const [gameState, setGameState] = useState('start');
+            const [round, setRound] = useState(1);
+            const [playerCity, setPlayerCity] = useState(null);
+            const [budget, setBudget] = useState(50000); // 용돈 5만원 유지
+            const [marketData, setMarketData] = useState(JSON.parse(JSON.stringify(REGIONS_DATA))); 
+            const [cart, setCart] = useState([]);
+            const [inventory, setInventory] = useState([]);
+            const [alertMsg, setAlertMsg] = useState('');
+
+            // 라운드 복구(되돌아가기)를 위한 스냅샷 기록 상태
+            const [roundHistory, setRoundHistory] = useState({
+                1: { budget: 50000, inventory: [], marketData: JSON.parse(JSON.stringify(REGIONS_DATA)) },
+                2: null,
+                3: null
+            });
+
+            const getCityZone = (cityId) => {
+                for (const zone of marketData) {
+                    if (zone.cities.find(c => c.id === cityId)) return zone.zone;
+                }
+                return '';
+            };
+
+            const getCityName = (cityId) => {
+                for (const zone of marketData) {
+                    const city = zone.cities.find(c => c.id === cityId);
+                    if (city) return city.name;
+                }
+                return '';
+            };
+
+            const calculateShipping = (productCityId) => {
+                if (productCityId === playerCity?.id) return 0;
+                if (round === 1) return 400;
+                if (round >= 2) {
+                    const playerZone = getCityZone(playerCity?.id);
+                    const productZone = getCityZone(productCityId);
+                    return playerZone === productZone ? 200 : 400;
+                }
+                return 400;
+            };
+
+            const showAlert = (msg) => {
+                setAlertMsg(msg);
+                setTimeout(() => setAlertMsg(''), 3000);
+            };
+
+            const startGame = (city) => {
+                setPlayerCity(city);
+                const initialMarket = JSON.parse(JSON.stringify(REGIONS_DATA));
+                setMarketData(initialMarket);
+                setRound(1);
+                setBudget(50000);
+                setInventory([]);
+                setCart([]);
+                setRoundHistory({
+                    1: { budget: 50000, inventory: [], marketData: initialMarket },
+                    2: null,
+                    3: null
+                });
+                setGameState('roundIntro');
+            };
+
+            const startRound = () => {
+                // 3라운드 이상 고온 현상 데이터 변형
+                if (round === 3) {
+                    const newData = JSON.parse(JSON.stringify(marketData));
+                    newData.forEach(z => z.cities.forEach(c => c.items.forEach(item => {
+                        if (item.type === '과일' || item.type === '채소') {
+                            if (Math.random() < 0.3) {
+                                item.qty = 0; // 30% 확률로 품절
+                            } else {
+                                item.qty = Math.floor(Math.random() * 2) + 1;
+                                item.price = Math.floor(item.price * 1.5);
+                            }
+                        }
+                    })));
+                    setMarketData(newData);
+                    
+                    // 3라운드의 새로운 시작 스냅샷 저장
+                    setRoundHistory(prev => ({
+                        ...prev,
+                        3: { budget: budget, inventory: [...inventory], marketData: newData }
+                    }));
+                }
+                setGameState('playing');
+            };
+
+            // 이전 단계(라운드)로 되돌아가기
+            const goBackToPreviousStage = () => {
+                if (round === 1) {
+                    // 1라운드면 아예 시작 선택창으로 복귀
+                    setGameState('start');
+                    return;
+                }
+                const prevRound = round - 1;
+                const snapshot = roundHistory[prevRound];
+                if (snapshot) {
+                    setRound(prevRound);
+                    setBudget(snapshot.budget);
+                    setInventory([...snapshot.inventory]);
+                    setMarketData(JSON.parse(JSON.stringify(snapshot.marketData)));
+                    setCart([]);
+                    setGameState('roundIntro');
+                    showAlert(`이전 단계(${prevRound}라운드)로 이동했습니다.`);
+                }
+            };
+
+            // 현재 라운드 처음 상태로 재시작 (심부름 실패나 과소비 복구)
+            const restartCurrentRound = () => {
+                const snapshot = roundHistory[round];
+                if (snapshot) {
+                    setBudget(snapshot.budget);
+                    setInventory([...snapshot.inventory]);
+                    setMarketData(JSON.parse(JSON.stringify(snapshot.marketData)));
+                    setCart([]);
+                    showAlert(`${round}라운드가 처음 상태로 리셋되었습니다.`);
+                }
+            };
+
+            const addToCart = (item, cityId) => {
+                const shipping = calculateShipping(cityId);
+                const totalCost = item.price + shipping;
+                const currentCartTotal = cart.reduce((sum, cartItem) => sum + cartItem.price + cartItem.shipping, 0);
+                
+                if (budget - currentCartTotal - totalCost < 0) {
+                    showAlert("앗! 예산이 부족해요! 배송비가 더 저렴한 지역이나 싼 대체 물건을 찾아볼까요?");
+                    return;
+                }
+
+                const inCartQty = cart.filter(c => c.id === item.id).length;
+                if (inCartQty >= item.qty) {
+                    showAlert(`시장에 남은 ${item.name}이(가) 부족해요!`);
+                    return;
+                }
+
+                setCart([...cart, { ...item, cityId, cityName: getCityName(cityId), shipping }]);
+            };
+
+            const removeFromCart = (indexToRemove) => {
+                setCart(cart.filter((_, index) => index !== indexToRemove));
+            };
+
+            const getMissionProgress = () => {
+                const progress = {};
+                const reqs = MISSIONS[round];
+                for (const type in reqs) progress[type] = 0;
+                cart.forEach(item => {
+                    if (progress[item.type] !== undefined) progress[item.type]++;
+                });
+                return progress;
+            };
+
+            const checkMissionComplete = () => {
+                const reqs = MISSIONS[round];
+                const progress = getMissionProgress();
+                for (const type in reqs) {
+                    if (progress[type] < reqs[type]) return false;
+                }
+                return true;
+            };
+
+            // 실패 가능 여부 점검 (예산이 너무 줄어서 장바구니 품목을 포기하고 다시 담아도 성공할 수 없는지 체킹)
+            const isSoftLocked = () => {
+                const currentCartTotal = cart.reduce((sum, item) => sum + item.price + item.shipping, 0);
+                const remainingMoney = budget - currentCartTotal;
+                // 미션 완료 여부 확인
+                if (checkMissionComplete()) return false;
+                
+                // 만약 아직 미션 미달성인데 수중에 가진 돈이 최저 물건 + 배달비 조합보다 낮으면 사실상 실패(Soft-locked)
+                if (remainingMoney < 1500) { // 시장 최소 물품단가가 약 1500원
+                    return true;
+                }
+                return false;
+            };
+
+            const checkout = () => {
+                if (!checkMissionComplete()) {
+                    showAlert("할머니의 심부름 목록을 모두 채워주세요!");
+                    return;
+                }
+
+                const totalCost = cart.reduce((sum, item) => sum + item.price + item.shipping, 0);
+                const nextBudget = budget - totalCost;
+                const nextInventory = [...inventory, ...cart];
+
+                // 시장 물건 잔량 업데이트
+                const newData = JSON.parse(JSON.stringify(marketData));
+                cart.forEach(cartItem => {
+                    newData.forEach(z => z.cities.forEach(c => c.items.forEach(item => {
+                        if (item.id === cartItem.id) item.qty--;
+                    })));
+                });
+
+                setBudget(nextBudget);
+                setInventory(nextInventory);
+                setCart([]);
+                setMarketData(newData);
+
+                if (round === 3) {
+                    setGameState('end');
+                } else {
+                    const nextRound = round + 1;
+                    // 다음 라운드 진입 전 히스토리에 시작 스냅샷 저장
+                    setRoundHistory(prev => ({
+                        ...prev,
+                        [nextRound]: { budget: nextBudget, inventory: nextInventory, marketData: newData }
+                    }));
+                    setRound(nextRound);
+                    setGameState('roundIntro');
+                }
+            };
+
+            if (gameState === 'start') {
+                return (
+                    <div className="min-h-screen bg-green-50 p-6 flex flex-col items-center justify-center font-sans">
+                        <div className="bg-white p-8 rounded-3xl shadow-xl max-w-5xl w-full text-center border-4 border-green-400">
+                            <h1 className="text-3xl sm:text-4xl md:text-5xl font-black text-green-700 mb-4 tracking-tight leading-tight">🎒 경북 특산물 시장 교류 게임</h1>
+                            <p className="text-base sm:text-lg text-gray-700 mb-8 bg-green-100 p-4 rounded-xl shadow-sm leading-relaxed">
+                                여름방학을 맞아 할머니 댁에 왔어요!<br/>
+                                할머니의 심부름으로 시장에서 장을 보며 <strong>경제</strong>와 <strong>지역 간의 교류</strong>를 배워볼까요?<br/>
+                                <span className="text-sm text-green-800 font-medium">✨ 중간에 실수해도 '되돌아가기' 버튼으로 언제든 다시 시도할 수 있어요!</span>
+                            </p>
+                            <h2 className="text-xl sm:text-2xl font-bold text-gray-800 mb-6 bg-yellow-100 inline-block px-6 py-2 rounded-full border-2 border-yellow-300">나는 어느 동네 시민이 될까요? 👇</h2>
+                            
+                            <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+                                {REGIONS_DATA.map(zone => (
+                                    <div key={zone.zone} className="bg-gray-50 rounded-2xl p-4 border-2 border-gray-200 flex flex-col h-full">
+                                        <h3 className="font-black text-xl mb-3 text-gray-600">{zone.zone}</h3>
+                                        <div className="grid grid-cols-2 gap-2 flex-grow">
+                                            {zone.cities.map(city => (
+                                                <button 
+                                                    key={city.id}
+                                                    onClick={() => startGame({ ...city, zone: zone.zone })}
+                                                    className="p-2 bg-white border-2 border-blue-200 rounded-xl hover:bg-blue-50 hover:border-blue-400 hover:scale-[1.05] transition-all shadow-sm flex flex-col items-center justify-center gap-1"
+                                                >
+                                                    <span className="text-2xl">🏠</span>
+                                                    <span className="font-bold text-sm text-gray-800">{city.name}</span>
+                                                </button>
+                                            ))}
+                                        </div>
+                                    </div>
+                                ))}
+                            </div>
+                        </div>
+                    </div>
+                );
+            }
+
+            if (gameState === 'roundIntro') {
+                return (
+                    <div className="min-h-screen bg-blue-50 flex items-center justify-center p-6">
+                        <div className="bg-white p-8 rounded-3xl shadow-xl max-w-lg w-full text-center border-4 border-blue-400">
+                            <div className="text-7xl mb-6">👵</div>
+                            <h2 className="text-2xl sm:text-3xl font-black text-blue-800 mb-4">{ROUND_STORIES[round].title}</h2>
+                            <p className="text-lg sm:text-xl text-gray-700 mb-6 leading-relaxed bg-blue-50 p-4 rounded-xl">
+                                {ROUND_STORIES[round].desc}
+                            </p>
+                            
+                            {/* 미션 상세 상자 */}
+                            <div className="bg-yellow-100 p-4 rounded-2xl border-2 border-yellow-300 shadow-sm mb-6 text-left">
+                                <h4 className="font-bold text-yellow-800 mb-2 border-b border-yellow-200 pb-1 text-base sm:text-lg">📋 할머니의 장보기 미션</h4>
+                                <ul className="space-y-1 text-gray-800 font-bold">
+                                    {Object.keys(MISSIONS[round]).map(type => {
+                                        const displayName = type === '동물' ? '동물(수산물, 고기 포함)' : type;
+                                        return (
+                                            <li key={type} className="flex items-center gap-2 text-sm sm:text-base">
+                                                <span className="text-green-600">✔</span> {displayName} 제품 총 <span className="text-blue-700 text-lg">{MISSIONS[round][type]}</span>개 사오기
+                                            </li>
+                                        );
+                                    })}
+                                </ul>
+                            </div>
+
+                            <div className="bg-red-50 p-3 rounded-xl font-bold text-red-600 mb-8 text-sm sm:text-base border border-red-200 shadow-inner">
+                                🚨 이번 라운드 특별 규칙: <br/><span className="text-base sm:text-lg">{ROUND_STORIES[round].rule}</span>
+                            </div>
+
+                            <div className="flex flex-col gap-3">
+                                <button 
+                                    onClick={startRound}
+                                    className="w-full py-4 bg-blue-500 hover:bg-blue-600 text-white text-xl sm:text-2xl font-black rounded-2xl shadow-lg transition-transform hover:scale-105"
+                                >
+                                    장보러 가기! 🛒
+                                </button>
+                                <button 
+                                    onClick={goBackToPreviousStage}
+                                    className="w-full py-2 bg-gray-200 hover:bg-gray-300 text-gray-700 text-sm font-bold rounded-xl transition-all"
+                                >
+                                    ◀ {round === 1 ? '처음 화면(동네 변경)으로 가기' : '이전 라운드로 돌아가기'}
+                                </button>
+                            </div>
+                        </div>
+                    </div>
+                );
+            }
+
+            if (gameState === 'end') {
+                return (
+                    <div className="min-h-screen bg-orange-50 flex items-center justify-center p-6">
+                        <div className="bg-white p-6 sm:p-8 rounded-3xl shadow-xl max-w-2xl w-full border-4 border-orange-400 text-center">
+                            <h1 className="text-3xl sm:text-4xl font-black text-orange-600 mb-4">🎉 심부름 완료! 할머니의 일기</h1>
+                            <div className="bg-orange-100 p-4 sm:p-6 rounded-2xl my-6 text-left shadow-inner text-base sm:text-lg leading-relaxed border border-orange-200">
+                                <p className="mb-4">
+                                    오늘 우리 손주가 내가 부탁한 물건들을 아주 잘 사왔다. 
+                                    <strong> {playerCity?.name}</strong>에서 출발해서 여러 지역의 특산물을 구해왔지.
+                                </p>
+                                <p className="mb-4 text-green-700 font-bold bg-green-50 p-3 rounded-xl border border-green-200">
+                                    "지역마다 자연환경과 생산되는 특산물이 달라서, 우리는 서로 물건을 주고받는 '지역 간의 교류'가 필요하단다. 
+                                    교통이 발달해서 이웃 지역(같은 권역)에서 물건을 살 땐 배송비도 저렴했지?"
+                                </p>
+                                <p className="mb-4 text-gray-800">
+                                    기후 위기로 물건이 부족할 땐 합리적인 선택을 하느라 고생이 많았을 텐데, 정말 기특하구나!
+                                </p>
+                            </div>
+                            
+                            <div className="bg-gray-50 border-2 border-gray-200 rounded-xl p-4 sm:p-6 mb-8">
+                                <h3 className="font-black text-xl sm:text-2xl mb-4 border-b-2 border-gray-300 pb-2 text-gray-700">🧾 최종 영수증</h3>
+                                <p className="text-lg sm:text-xl mb-4 bg-blue-50 p-2 rounded-lg font-bold">남은 용돈: <span className="text-blue-600 text-xl sm:text-2xl">{budget.toLocaleString()}원</span> <span className="text-xs sm:text-sm text-gray-500 font-normal">(처음 50,000원)</span></p>
+                                <div className="text-left text-gray-700 bg-white p-4 rounded-xl border-2 border-gray-100 mt-4 h-40 overflow-y-auto shadow-inner">
+                                    {inventory.map((item, idx) => (
+                                        <div key={idx} className="flex justify-between border-b py-2 border-dashed border-gray-200 last:border-0 text-sm sm:text-base">
+                                            <span className="font-medium">{item.emoji} {item.cityName} {item.name}</span>
+                                            <span className="font-bold">{(item.price + item.shipping).toLocaleString()}원</span>
+                                        </div>
+                                    ))}
+                                </div>
+                            </div>
+                            
+                            <div className="flex flex-col sm:flex-row gap-3 justify-center">
+                                <button 
+                                    onClick={goBackToPreviousStage}
+                                    className="px-6 py-3 bg-gray-500 hover:bg-gray-600 text-white font-bold rounded-2xl text-lg shadow-md transition-all"
+                                >
+                                    ◀ 3라운드로 다시 돌아가기
+                                </button>
+                                <button 
+                                    onClick={() => window.location.reload()}
+                                    className="px-8 py-3 bg-orange-500 hover:bg-orange-600 text-white font-black rounded-2xl text-lg shadow-lg transition-transform hover:scale-105"
+                                >
+                                    처음부터 다시하기 🔄
+                                </button>
+                            </div>
+                        </div>
+                    </div>
+                );
+            }
+
+            const reqs = MISSIONS[round];
+            const progress = getMissionProgress();
+            const currentCartTotal = cart.reduce((sum, item) => sum + item.price + item.shipping, 0);
+            const softLocked = isSoftLocked();
+
+            return (
+                <div className="min-h-screen bg-gray-100 flex flex-col font-sans">
+                    {alertMsg && (
+                        <div className="fixed top-20 left-1/2 transform -translate-x-1/2 z-50 bg-red-500 text-white px-6 py-3 sm:px-8 sm:py-4 rounded-full shadow-2xl font-bold text-lg sm:text-xl animate-bounce w-11/12 max-w-md text-center">
+                            {alertMsg}
+                        </div>
+                    )}
+
+                    {/* 헤더 */}
+                    <header className="bg-white shadow-md p-3 sm:p-4 sticky top-0 z-40">
+                        <div className="max-w-7xl mx-auto flex flex-col md:flex-row justify-between items-center gap-3 sm:gap-4">
+                            <div className="flex flex-wrap items-center gap-2 sm:gap-3 w-full md:w-auto justify-center md:justify-start">
+                                <div className="bg-green-100 text-green-800 px-3 py-1 sm:px-4 sm:py-2 rounded-xl font-black text-lg sm:text-2xl border-2 border-green-300 shadow-sm whitespace-nowrap">
+                                    {round}라운드
+                                </div>
+                                <div className="text-sm sm:text-base font-bold text-gray-700 flex items-center gap-1.5">
+                                    <span>내 동네:</span> 
+                                    <span className="text-blue-600 text-base sm:text-lg bg-blue-50 px-2 py-0.5 rounded-lg font-black">{playerCity?.name}</span> 
+                                    <span className="text-xs text-gray-500 whitespace-nowrap">({getCityZone(playerCity?.id)})</span>
+                                </div>
+                            </div>
+                            
+                            {/* 예산 및 복구 버튼들 */}
+                            <div className="flex flex-wrap gap-2 items-center justify-center w-full md:w-auto">
+                                <button 
+                                    onClick={goBackToPreviousStage}
+                                    title="이전 단계나 동네 선택으로 이동"
+                                    className="px-3 py-1.5 bg-gray-100 hover:bg-gray-200 border border-gray-300 text-gray-700 font-bold text-xs sm:text-sm rounded-xl transition-all shadow-sm flex items-center gap-1"
+                                >
+                                    ◀ 되돌아가기
+                                </button>
+                                <button 
+                                    onClick={restartCurrentRound}
+                                    title="이번 라운드 시작시점으로 초기화"
+                                    className="px-3 py-1.5 bg-yellow-50 hover:bg-yellow-100 border border-yellow-400 text-yellow-800 font-bold text-xs sm:text-sm rounded-xl transition-all shadow-sm flex items-center gap-1"
+                                >
+                                    🔄 라운드 재시작
+                                </button>
+                                <div className="bg-yellow-100 px-3 py-1.5 sm:px-5 sm:py-2 rounded-2xl border-2 border-yellow-400 shadow-sm flex items-center gap-2">
+                                    <span className="text-gray-700 font-bold text-xs sm:text-sm whitespace-nowrap">내 지갑 💳</span>
+                                    <span className="text-lg sm:text-2xl font-black text-orange-600 whitespace-nowrap">{budget.toLocaleString()}원</span>
+                                </div>
+                            </div>
+                        </div>
+                    </header>
+
+                    {/* 실시간 미션 가이드 대시보드 */}
+                    <div className="bg-yellow-50 border-b-2 border-yellow-200 px-4 py-3 shadow-inner">
+                        <div className="max-w-7xl mx-auto flex flex-col md:flex-row justify-between items-center gap-3">
+                            <div className="flex items-center gap-2">
+                                <span className="text-2xl">📋</span>
+                                <div className="text-left">
+                                    <h4 className="font-extrabold text-gray-800 text-sm sm:text-base leading-tight">할머니의 실시간 심부름 지시 사항</h4>
+                                    <p className="text-xs text-gray-500">지정된 물품 종류와 수량을 모아서 하단 장바구니의 [계산하기]를 완료하세요!</p>
+                                </div>
+                            </div>
+                            <div className="flex flex-wrap gap-2">
+                                {Object.keys(reqs).map(type => {
+                                    const isDone = progress[type] >= reqs[type];
+                                    const displayName = type === '동물' ? '동물(수산물,고기)' : type;
+                                    return (
+                                        <div key={type} className={`px-3 py-1 rounded-xl text-xs sm:text-sm font-bold border flex items-center gap-1.5 ${isDone ? 'bg-green-100 border-green-300 text-green-800' : 'bg-white border-yellow-300 text-gray-700'}`}>
+                                            <span>{isDone ? '✅' : '⏳'}</span>
+                                            <span>{displayName} :</span>
+                                            <span className="font-extrabold text-blue-700">{progress[type]} / {reqs[type]}</span>
+                                        </div>
+                                    );
+                                })}
+                            </div>
+                        </div>
+                    </div>
+
+                    {/* 예산 부족 / 실패(Soft-lock) 경고 영역 */}
+                    {softLocked && (
+                        <div className="bg-red-100 border-b border-red-200 text-red-800 px-4 py-2 text-center text-xs sm:text-sm font-bold flex flex-col sm:flex-row justify-center items-center gap-2 animate-pulse">
+                            <span>⚠️ 돈이 부족해 현재 상태에서는 미션을 완료할 수 없습니다! 다시 도전해 볼까요?</span>
+                            <div className="flex gap-2">
+                                <button onClick={restartCurrentRound} className="bg-red-600 text-white px-3 py-1 rounded-lg text-xs font-black shadow hover:bg-red-700 transition-all">🔄 현재 라운드 다시 도전하기</button>
+                                <button onClick={goBackToPreviousStage} className="bg-gray-600 text-white px-3 py-1 rounded-lg text-xs font-black shadow hover:bg-gray-700 transition-all">◀ 이전 라운드로 가기</button>
+                            </div>
+                        </div>
+                    )}
+
+                    <div className="flex-1 max-w-7xl mx-auto w-full p-3 sm:p-4 flex flex-col lg:flex-row gap-4 sm:gap-6">
+                        {/* 왼쪽: 전체 특산물 시장 */}
+                        <div className="flex-1 overflow-y-auto pb-10">
+                            <h2 className="text-xl sm:text-2xl font-black mb-4 flex items-center gap-2 text-gray-800">🛒 경북 특산물 전체 시장</h2>
+                            <div className="flex flex-col gap-4 sm:gap-6">
+                                {marketData.map((zone) => (
+                                    <div key={zone.zone} className="bg-white rounded-2xl shadow-sm border-2 border-gray-200 overflow-hidden">
+                                        <div className="bg-gray-100 px-4 py-2 sm:px-5 sm:py-3 border-b-2 border-gray-200 font-black text-gray-800 flex flex-wrap justify-between items-center text-base sm:text-lg gap-2">
+                                            <span>{zone.zone}</span>
+                                            {round >= 2 && zone.zone === getCityZone(playerCity?.id) && (
+                                                <span className="text-xs sm:text-sm bg-blue-100 text-blue-700 px-2 py-1 sm:px-3 sm:py-1 rounded-full border border-blue-300 whitespace-nowrap">✨ 배송비 할인 권역 (200원)</span>
+                                            )}
+                                        </div>
+                                        <div className="p-3 sm:p-4 grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-3 sm:gap-4">
+                                            {zone.cities.map(city => (
+                                                <div key={city.id} className={`border-2 rounded-2xl p-3 sm:p-4 transition-colors flex flex-col ${city.id === playerCity?.id ? 'border-green-400 bg-green-50 shadow-inner' : 'border-gray-200 hover:border-blue-300'}`}>
+                                                    <h4 className="font-black text-base sm:text-lg mb-3 flex items-center justify-between text-gray-800 border-b-2 border-gray-200 pb-2">
+                                                        {city.name}
+                                                        {city.id === playerCity?.id && <span className="text-[10px] sm:text-xs bg-green-500 text-white px-2 py-1 rounded-lg">우리동네(무료)</span>}
+                                                    </h4>
+                                                    <div className="flex flex-col gap-2 sm:gap-3 flex-grow justify-end">
+                                                        {city.items.map(item => {
+                                                            const shipping = calculateShipping(city.id);
+                                                            const isSoldOut = item.qty === 0;
+                                                            return (
+                                                                <div key={item.id} className={`flex items-center justify-between p-2 rounded-xl bg-white border-2 ${isSoldOut ? 'border-gray-300 opacity-60 grayscale bg-gray-50' : 'border-gray-100 shadow-sm hover:border-blue-200'}`}>
+                                                                    <div className="flex items-center gap-1 sm:gap-2">
+                                                                        <span className="text-2xl sm:text-3xl drop-shadow-sm">{item.emoji}</span>
+                                                                        <div>
+                                                                            <p className="font-black text-gray-800 text-sm sm:text-md leading-tight">{item.name}</p>
+                                                                            <p className="text-[10px] sm:text-xs text-gray-500 font-medium">
+                                                                                {item.type === '동물' ? '동물(수산물/고기)' : item.type}
+                                                                            </p>
+                                                                        </div>
+                                                                    </div>
+                                                                    <div className="flex flex-col items-end gap-1">
+                                                                        <div className="text-right">
+                                                                            <p className="font-black text-blue-700 text-sm sm:text-md">{item.price.toLocaleString()}원</p>
+                                                                            <p className={`text-[9px] sm:text-[10px] px-1 py-0.5 rounded ${shipping === 0 ? 'bg-green-100 text-green-700 font-bold' : shipping === 200 ? 'bg-blue-100 text-blue-700 font-bold' : 'bg-red-50 text-red-500'}`}>
+                                                                                {shipping === 0 ? '배송무료' : `+배송 ${shipping}원`}
+                                                                            </p>
+                                                                        </div>
+                                                                        <button 
+                                                                            onClick={() => addToCart(item, city.id)}
+                                                                            disabled={isSoldOut}
+                                                                            className={`px-2 py-1 sm:px-3 sm:py-1.5 rounded-lg text-white text-xs sm:text-sm font-black transition-transform ${isSoldOut ? 'bg-gray-400 cursor-not-allowed' : 'bg-green-500 hover:bg-green-600 hover:scale-105 active:scale-95 shadow-sm'}`}
+                                                                        >
+                                                                            {isSoldOut ? '품절' : '담기'}
+                                                                        </button>
+                                                                    </div>
+                                                                </div>
+                                                            );
+                                                        })}
+                                                    </div>
+                                                </div>
+                                            ))}
+                                        </div>
+                                    </div>
+                                ))}
+                            </div>
+                        </div>
+
+                        {/* 오른쪽: 장바구니 */}
+                        <div className="w-full lg:w-96 flex flex-col gap-4 sm:gap-6 pb-10">
+                            <div className="bg-white border-4 border-gray-200 rounded-3xl p-4 sm:p-6 shadow-md flex-1 flex flex-col lg:sticky lg:top-28 lg:max-h-[calc(100vh-140px)] h-[450px] sm:h-[550px]">
+                                <h3 className="text-xl sm:text-2xl font-black text-gray-800 mb-3 sm:mb-4 border-b-2 border-gray-100 pb-2 sm:pb-3 flex items-center gap-2">🛍️ 내 장바구니</h3>
+                                
+                                <div className="flex-1 overflow-y-auto mb-3 sm:mb-4 space-y-2 sm:space-y-3 pr-2">
+                                    {cart.length === 0 ? (
+                                        <div className="flex flex-col items-center justify-center h-full text-gray-400 gap-2">
+                                            <span className="text-3xl sm:text-4xl">🛒</span>
+                                            <p className="font-medium text-sm sm:text-base text-center">
+                                                아직 담은 물건이 없어요.<br/>
+                                                <span className="text-xs text-gray-400">시장에서 물건을 골라 담아보세요!</span>
+                                            </p>
+                                        </div>
+                                    ) : (
+                                        cart.map((item, idx) => (
+                                            <div key={idx} className="flex justify-between items-center bg-gray-50 p-2 sm:p-3 rounded-xl border-2 border-gray-100 shadow-sm">
+                                                <div className="flex items-center gap-2 sm:gap-3">
+                                                    <span className="text-2xl sm:text-3xl">{item.emoji}</span>
+                                                    <div>
+                                                        <p className="font-black text-gray-800 text-sm sm:text-base">{item.cityName} {item.name}</p>
+                                                        <p className="text-[10px] sm:text-xs text-gray-500 font-medium">물건 {item.price} + 배송 {item.shipping}</p>
+                                                    </div>
+                                                </div>
+                                                <div className="flex items-center gap-1 sm:gap-2">
+                                                    <span className="font-black text-sm sm:text-md text-blue-700">{(item.price + item.shipping).toLocaleString()}</span>
+                                                    <button onClick={() => removeFromCart(idx)} className="text-red-500 hover:text-red-700 hover:bg-red-100 bg-white border border-red-200 p-1 sm:p-1.5 rounded-lg transition-colors text-xs sm:text-sm">❌</button>
+                                                </div>
+                                            </div>
+                                        ))
+                                    )}
+                                </div>
+
+                                <div className="border-t-4 border-dashed border-gray-200 pt-3 sm:pt-4 mb-4 sm:mb-6">
+                                    <div className="flex justify-between items-end text-base sm:text-lg mb-1 sm:mb-2">
+                                        <span className="text-gray-600 font-bold">결제 예정 금액</span>
+                                        <span className={`font-black text-xl sm:text-3xl ${budget < currentCartTotal ? 'text-red-500' : 'text-blue-700'}`}>
+                                            {currentCartTotal.toLocaleString()}원
+                                        </span>
+                                    </div>
+                                    <div className="flex justify-between items-center text-xs sm:text-sm">
+                                        <span className="text-gray-500">결제 후 남는 돈:</span>
+                                        <span className={`font-bold ${budget - currentCartTotal < 0 ? 'text-red-500' : 'text-gray-700'}`}>
+                                            {(budget - currentCartTotal).toLocaleString()}원
+                                        </span>
+                                    </div>
+                                </div>
+
+                                <div className="flex flex-col gap-2">
+                                    <button 
+                                        onClick={checkout}
+                                        className={`w-full py-3 sm:py-4 rounded-2xl text-lg sm:text-xl font-black text-white transition-all ${
+                                            checkMissionComplete() && currentCartTotal <= budget 
+                                                ? 'bg-blue-600 hover:bg-blue-700 hover:scale-[1.02] active:scale-95 shadow-lg' 
+                                                : 'bg-gray-300 cursor-not-allowed text-gray-500'
+                                        }`}
+                                    >
+                                        {checkMissionComplete() ? '계산하기 💳' : '심부름 목표를 채우고 계산하세요'}
+                                    </button>
+
+                                    {/* 위기 지원 비상 버튼 */}
+                                    {cart.length > 0 && (
+                                        <button 
+                                            onClick={() => setCart([])}
+                                            className="w-full py-1.5 text-xs text-red-500 hover:text-red-700 font-bold hover:bg-red-50 rounded-xl transition-all border border-dashed border-red-200"
+                                        >
+                                            🧹 장바구니 한 번에 비우기
+                                        </button>
+                                    )}
+                                </div>
+                            </div>
+                        </div>
+
+                    </div>
+                </div>
+            );
+        }
+
+        const root = ReactDOM.createRoot(document.getElementById('root'));
+        root.render(<App />);
+    </script>
+</body>
+</html>
